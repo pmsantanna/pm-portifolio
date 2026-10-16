@@ -1,0 +1,11 @@
+{
+  "name": "noise-core",
+  "private": true,
+  "description": "The Noise orb without React or Electron: shaders, bands, render loop.",
+  "type": "module",
+  "main": "index.js",
+  "sideEffects": false,
+  "peerDependencies": {
+    "three": ">=0.160.0"
+  }
+}
