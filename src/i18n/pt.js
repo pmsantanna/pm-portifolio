@@ -14,8 +14,6 @@ const pt = {
     slug:        'CENA 002 · EXT. PONTE ENTRE DOIS BANCOS — NEBLINA',
     take:        'TAKE 001 — DESTAQUE',
     projectDesc: 'Um framework de migração de dados type-safe e resumível para sistemas Java enterprise. Checkpoints, retry e paginação — feito para atravessar a neblina entre um banco e outro sem derrubar nada.',
-    dashboardDesc: 'Dashboard de auditoria em tempo real para o DataBridge — cada execução vira um degrau numa hélice de DNA em wireframe. Volume por rotina, histórico e erros, ao vivo via SSE enquanto o CLI roda.',
-    dashboardTake: 'TAKE 002 — DASHBOARD',
   },
 
   noise: {

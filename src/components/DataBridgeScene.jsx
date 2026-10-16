@@ -331,7 +331,7 @@ export default function DataBridgeScene({ lang = 'en', t }) {
             </div>
           </div>
 
-          {/* ── direita: trilho com os dois takes ── */}
+          {/* ── direita: o card do projeto ── */}
           <div className="db-rail">
             <article className="still db-card">
               <span className="take">{t.scene2.take}</span>
@@ -343,26 +343,6 @@ export default function DataBridgeScene({ lang = 'en', t }) {
                 <span>PostgreSQL</span>
                 <span>Docker</span>
               </div>
-            </article>
-
-            <article className="still db-card sub">
-              <span className="take">{t.scene2.dashboardTake}</span>
-              <h3>Dashboard</h3>
-              <p>{t.scene2.dashboardDesc}</p>
-              <div className="tags">
-                <span>Spring Boot</span>
-                <span>React</span>
-                <span>SSE</span>
-                <span>Three.js</span>
-              </div>
-              <a
-                className="card-link"
-                href="https://github.com/pmsantanna/databridge-dashboard"
-                target="_blank"
-                rel="noreferrer"
-              >
-                github ↗
-              </a>
             </article>
           </div>
 
