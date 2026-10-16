@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 
-export default function useReveal(threshold = 0.25) {
+// rootMargin abre a janela além da tela: com '100% 0px' o gatilho dispara
+// uma altura de tela antes de o elemento aparecer — tempo de baixar um
+// chunk lazy sem a cena chegar vazia
+export default function useReveal(threshold = 0.25, rootMargin = '0px') {
   const ref = useRef(null)
   const [on, setOn] = useState(false)
 
@@ -13,11 +16,11 @@ export default function useReveal(threshold = 0.25) {
           io.disconnect()
         }
       },
-      { threshold }
+      { threshold, rootMargin }
     )
     io.observe(el)
     return () => io.disconnect()
-  }, [threshold])
+  }, [threshold, rootMargin])
 
   return [ref, on]
 }

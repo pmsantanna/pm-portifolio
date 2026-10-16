@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import SerraScene from './components/SerraScene';
 import DataBridgeScene from './components/DataBridgeScene';
 import Grain from './components/Grain';
@@ -8,6 +8,25 @@ import ThemeSwitch from './components/ThemeSwitch';
 import useReveal from './hooks/useReveal';
 import useLocale from './hooks/useLocale';
 import css, { switchCss } from './styles';
+
+// a cena do Noise traz um segundo WebGL, shaders e a faixa demo: fica fora
+// do carregamento inicial e só baixa quando a página chega perto dela
+const NoiseScene = lazy(() => import('./scenes/NoiseScene/NoiseScene'));
+
+function NoiseSlot({ t, theme }) {
+  // dispara uma tela antes de a cena aparecer, para o chunk já estar aqui
+  // quando o reveal dela acontecer
+  const [ref, near] = useReveal(0, '100% 0px');
+  return (
+    <section ref={ref} className="scene noise-scene">
+      {near && (
+        <Suspense fallback={null}>
+          <NoiseScene t={t} theme={theme} />
+        </Suspense>
+      )}
+    </section>
+  );
+}
 
 export default function Serra() {
   const { locale, t, toggle } = useLocale();
@@ -116,6 +135,9 @@ export default function Serra() {
 
         {/* Cena 002 — DataBridge: terminal com abas + card */}
         <DataBridgeScene lang={locale} t={t} />
+
+        {/* Cena 003 — Noise: o orbe do app, rodando no navegador */}
+        <NoiseSlot t={t} theme={theme} />
 
         {/* Créditos */}
         <section className="credits">
