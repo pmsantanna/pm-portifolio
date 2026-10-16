@@ -25,7 +25,7 @@ scripts/
 - **Não existe `TerminalScene`.** A cena de terminal é `DataBridgeScene` (CENA 002). A do Noise entra logo depois, como CENA 003.
 - **`setTheme({ deep, bright })`** em vez de `{ base, glow, seam }`: o orbe não desenha costura entre células, e as duas pontas do degradê são o tema inteiro. Noir: cinza claro → branco quente, sem saturação. Holo: as duas pontas percorrem o foil do site (`#8fa6ff → #ff9ddb → #7fe9c3 → #a894ff`) a cada 22 s, o período do `holo-shift`.
 - **A tela é escura nos dois temas.** É um monitor, não a página; no Holo ela ganha o fio de foil no topo, como os cards.
-- **Pele** aparece como um seletor desabilitado com "em breve" (a Fase 3 não foi feita).
+- **Pele: Orbe ou CD Case** (a Fase 3 da spec). O seletor troca a vista do widget sem recarregar a cena: a vista velha é descartada (com o contexto WebGL dela) e a nova nasce no mesmo lugar; som, letra e card seguem. A CD Case é a mesma do app, `createCdCaseScene` do núcleo, hospedada por `createCdCase` (renderer próprio, sem React Three Fiber); ela baixa num chunk à parte quando alguém a escolhe (ou passa o mouse no botão). No lugar da barra de faixas ficam os quatro discos do app (Holo, Prata, Rosa, Opala), com a troca animada. O estojo recebe o mesmo quadro que o app passa às skins — tocando, nível, grave, agudo, troca de linha e de faixa — e o rótulo mostra a faixa demo com a capa.
 - **"Baixar para Windows"** aparece desabilitado com "em breve": não há instalador publicado. Quando houver, é só preencher `DOWNLOAD_URL` no topo de `NoiseScene.jsx`.
 - **"Ver código"** aponta para `github.com/pmsantanna/noise`, que hoje é privado. O link dá 404 para visitantes até o repositório virar público.
 - **Reduced motion:** o núcleo já usa os valores reduzidos do app (sem rotação); a cena passa `amplitude: 0.5` em cima disso, o que dá entre 20% e 32% do deslocamento normal conforme o uniform — a spec pede 30%. Em idle a esfera fica parada e o loop deixa de desenhar.
@@ -52,8 +52,9 @@ Conferidos em Chromium headless (Playwright, WebGL por SwiftShader):
 | PT/EN troca todos os textos | ok, dentro do fade de 300 ms do site |
 | Noir/Holo muda as cores sem recriar a cena | ok — o mesmo `<canvas>` antes e depois da troca |
 | Sair pausa áudio e render; 5 s fora libera o WebGL | ok — pausa ao sair; após 5 s o canvas é removido e `forceContextLoss()` solta o contexto |
-| Chunk lazy ≤ 60 KB gzip | 22,6 KB |
+| Chunk lazy ≤ 60 KB gzip | cena 24,5 KB; CD Case num chunk próprio de 22 KB, só ao escolher |
 | Áudio ≤ 1,5 MB, só no Play | 1,33 MB; nenhum pedido de `demo-track` antes do Play |
+| Seletor Orbe ↔ CD Case troca sem recarregar a cena | ok — a CD Case monta no mesmo lugar (15 s no WebGL por software do container), abre no clique, troca para Prata com a animação, e a volta ao orbe mantém a música e a leitura de Hz |
 | Layout mobile (< 768 px) | widget de 280 px centralizado, letra embaixo, texto depois; sem rolagem horizontal a 390 px |
 
 **Não conferido aqui** e pendente antes de publicar:
@@ -61,6 +62,10 @@ Conferidos em Chromium headless (Playwright, WebGL por SwiftShader):
 - **FPS** (≥ 60 desktop, ≥ 30 mobile) em Chrome, Firefox e Safari iOS — o container só tem WebGL por software. A queda automática para o perfil leve abaixo de 40 fps por 2 s está ligada no desktop.
 - **Lighthouse ≤ 3 pontos de queda** — no container o mesmo build base deu 58, 63 e 89 em três rodadas; o número não significa nada aqui. O que muda no carregamento inicial é só o bundle principal: +3,2 KB gzip (as chaves de i18n da cena e o `NoiseSlot`). A cena e a faixa não são baixadas sem rolagem.
 - **`Range` no host**: `curl -I -H 'Range: bytes=0-1' <url do mp3>` tem que responder `206`.
+
+### O preço da CD Case no carregamento inicial
+
+O bundle principal cresceu 12,8 KB gzip com a CD Case, mesmo ela sendo lazy. O three é um módulo só e mora no bundle principal (o terreno usa); o tree-shaking passa a manter nele as classes que o estojo usa e o resto do site não (material físico, cubemap, extrusões, `CubeCamera`). Separar isso exigiria uma segunda cópia do three no chunk do estojo, que custaria bem mais. Medir no Lighthouse do deploy antes de publicar.
 
 ## Atualizar o núcleo
 

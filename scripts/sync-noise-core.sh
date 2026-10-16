@@ -19,9 +19,10 @@ fi
 
 rm -rf "$DEST"
 mkdir -p "$DEST"
-cp "$SRC"/noise-core/*.js "$SRC"/noise-core/package.json "$DEST"/
+# a pasta inteira, com a cd-case/ e as subpastas dela
+cp -R "$SRC"/noise-core/. "$DEST"/
 
-for f in "$DEST"/*.js; do
+find "$DEST" -name '*.js' | while read -r f; do
   printf '%s\n' "// noise-core @ $HASH (pmsantanna/noise) — cópia; mude no Noise e rode scripts/sync-noise-core.sh" | cat - "$f" > "$f.tmp"
   mv "$f.tmp" "$f"
 done

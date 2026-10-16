@@ -1,4 +1,4 @@
-// noise-core @ 28289ac (pmsantanna/noise) — cópia; mude no Noise e rode scripts/sync-noise-core.sh
+// noise-core @ 4c681de (pmsantanna/noise) — cópia; mude no Noise e rode scripts/sync-noise-core.sh
 import * as THREE from 'three'
 
 /* Shaders, uniformes e materiais do orbe.
@@ -65,8 +65,8 @@ uniform sampler2D uBands;
 uniform float     uCells;
 uniform float     uReact;   // quanto a faixa empurra a superfície para fora
 uniform float     uPeak;    // reforço que só acorda nos picos
-uniform float     uBreath;  // ruído de fundo, para o desenho não se repetir
-uniform float     uLive;    // 0 no silêncio, 1 tocando — porta do ruído
+uniform float     uBreath;  // noise de fundo, para o desenho não se repetir
+uniform float     uLive;    // 0 no silêncio, 1 tocando — porta do noise
 
 attribute vec4 aCells;
 attribute vec4 aCellsB;
@@ -94,7 +94,7 @@ void main() {
             + dot(aWeightsB, vec4(bandAt(aCellsB.x), bandAt(aCellsB.y),
                                   bandAt(aCellsB.z), bandAt(aCellsB.w)));
 
-  /* Ruído de fundo, mas só enquanto há som.
+  /* Noise de fundo, mas só enquanto há som.
    *
    * Ele existe para o desenho não se repetir: sem isso, duas passagens da
    * mesma faixa dão exatamente a mesma forma. Deixá-lo ligado o tempo todo
@@ -315,14 +315,14 @@ void main() {
    *
    * Furos todos do mesmo tamanho leem como padrão industrial. Na
    * referência há regiões de furo grande e regiões de furo miúdo, então
-   * são dois termos: um ruído de frequência baixa, que agrupa células
+   * são dois termos: um noise de frequência baixa, que agrupa células
    * vizinhas num mesmo regime, e um sorteio por célula, que quebra a
-   * regularidade dentro do grupo. Só ruído daria manchas suaves demais;
+   * regularidade dentro do grupo. Só noise daria manchas suaves demais;
    * só sorteio, sal e pimenta.
    *
    * Calculado aqui e não no fragment porque aCenter é constante no
    * triângulo: o valor atravessa a interpolação intacto e sai de graça,
-   * em vez de custar um ruído por pixel.
+   * em vez de custar um noise por pixel.
    */
   vec3  c = normalize(aCenter);
   float sorteio = fract(sin(dot(c, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
@@ -610,7 +610,7 @@ void main() {
  *
  * Pelos furos da Hexcore se vê um núcleo de luz; pelos da Sigil se via só
  * o verso da própria casca, parado. Nas referências o interior é cheio —
- * metal atrás do metal. Este é um blob que ondula por ruído no vértice e
+ * metal atrás do metal. Este é um blob que ondula por noise no vértice e
  * é sombreado com o mesmo ambiente da casca, um degrau mais fundo. É a
  * parte que nunca para de se mexer, mesmo com a treliça quieta.
  */
@@ -662,10 +662,10 @@ ${CHROME}
 
 void main() {
   /* A malha ondula no vértice, mas a normal que chega é a da esfera lisa —
-   * recalculá-la exigiria as derivadas analíticas do ruído. Um bump no
+   * recalculá-la exigiria as derivadas analíticas do noise. Um bump no
    * fragment resolve: o gradiente do mesmo campo, por diferença finita,
    * inclina a normal na direção da ondulação e o reflexo quebra como em
-   * água. Quatro ruídos por pixel, num objeto que ocupa pouca tela.
+   * água. Quatro noises por pixel, num objeto que ocupa pouca tela.
    */
   vec3  p = vDir * 3.2 + vec3(0.0, uTime * 0.42, uTime * 0.26);
   float e = 0.15;

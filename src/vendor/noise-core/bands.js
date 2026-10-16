@@ -1,4 +1,4 @@
-// noise-core @ 28289ac (pmsantanna/noise) — cópia; mude no Noise e rode scripts/sync-noise-core.sh
+// noise-core @ 4c681de (pmsantanna/noise) — cópia; mude no Noise e rode scripts/sync-noise-core.sh
 export const BAND_COUNT = 64
 
 const LOW_HZ = 30
