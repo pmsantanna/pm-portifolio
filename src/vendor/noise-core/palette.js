@@ -1,4 +1,4 @@
-// noise-core @ 28289ac (pmsantanna/noise) — cópia; mude no Noise e rode scripts/sync-noise-core.sh
+// noise-core @ 4c681de (pmsantanna/noise) — cópia; mude no Noise e rode scripts/sync-noise-core.sh
 /**
  * Cores do orbe: duas pontas de degradê, `deep` nos graves e `bright` nos
  * agudos, como [r, g, b] em 0..1.

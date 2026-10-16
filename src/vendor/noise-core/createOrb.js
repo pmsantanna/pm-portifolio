@@ -1,4 +1,4 @@
-// noise-core @ 28289ac (pmsantanna/noise) — cópia; mude no Noise e rode scripts/sync-noise-core.sh
+// noise-core @ 4c681de (pmsantanna/noise) — cópia; mude no Noise e rode scripts/sync-noise-core.sh
 import * as THREE from 'three'
 import { BAND_COUNT } from './bands.js'
 import { fibonacciSeeds, assignCells, voronoiCorners, spreadPick, spikeRig, createBandTexture } from './voronoi.js'
@@ -69,9 +69,10 @@ function prefersReducedMotion() {
  *                       quem hospeda desenha a barra, no mesmo quadro
  *   onQualityChange(q)  avisado quando o modo adaptativo troca o perfil
  *
- * Uma fonte é um AnalyserNode ou qualquer objeto { bands, sample() } — o
- * app desktop passa o próprio amostrador, que também alimenta a leitura
- * de Hz.
+ * Uma fonte é um AnalyserNode ou qualquer objeto { bands, sample() }, em
+ * que sample() devolve { level, bass } e, se souber, `lineChangedAt` (o
+ * instante, em performance.now(), da última troca de linha da letra — o
+ * orbe pulsa nela). O app desktop passa o quadro que todas as skins leem.
  */
 export function createOrb(options = {}) {
   const {
@@ -253,7 +254,7 @@ export function createOrb(options = {}) {
    */
   const out = new Float32Array(count)
   const outBands = { count, values: out }
-  const metrics = { level: 0, bass: 0, tone: 0.5, peak: 0 }
+  const metrics = { level: 0, bass: 0, tone: 0.5, peak: 0, lineChangedAt: -1e9 }
   const procedural = createProcedural({ count, bpm })
 
   const asSource = (x) => {
@@ -321,6 +322,8 @@ export function createOrb(options = {}) {
     metrics.bass = pb * (1 - mix) + (rm ? rm.bass : 0) * mix
     metrics.tone = rm ? rm.tone : 0.5
     metrics.peak = rm && mix > 0.5 ? rm.peak : 0
+    // a troca de linha da letra vem da fonte, se ela souber (o app sabe)
+    metrics.lineChangedAt = rm && rm.lineChangedAt !== undefined ? rm.lineChangedAt : -1e9
 
     still = reduced && !real && mix === 0
   }
@@ -336,6 +339,10 @@ export function createOrb(options = {}) {
     blendSources(now / 1000, dt)
     const m = metrics
 
+    // troca de linha da letra: um pulso que some em meio segundo
+    const desdeLinha = (performance.now() - (m.lineChangedAt || -1e9)) / 1000
+    const pulsoLetra = reduced ? 0 : Math.exp(-desdeLinha * 7)
+
     // envia as faixas para a GPU, e de quebra descobre a mais forte
     const v = out
     let loudest = 0
@@ -345,13 +352,14 @@ export function createOrb(options = {}) {
     }
     tex.needsUpdate = true
 
-    // A porta do ruído sai do pico das faixas, não do nível médio: as
+    // A porta do noise sai do pico das faixas, não do nível médio: as
     // faixas já vêm normalizadas em 0..1, então qualquer áudio real abre
     // a porta sem precisar de constante de calibração, e o silêncio a
     // fecha por completo. Sobe rápido para não perder o primeiro
     // compasso, desce devagar para a superfície não estalar entre notas.
     live += (loudest - live) * (loudest > live ? 0.30 : 0.05)
-    shellU.uLive.value = live
+    // a troca de linha acende as células um instante, como um compasso
+    shellU.uLive.value = Math.min(1, live + 0.25 * pulsoLetra)
 
     // relógio absoluto, o mesmo que o espectro usa: com o tempo desde a
     // montagem os dois divergiriam assim que um deles remontasse
@@ -408,7 +416,7 @@ export function createOrb(options = {}) {
     shellU.uSpikeMean.value = mediaBico
 
     // o núcleo pulsa no grave e respira devagar quando não há nada tocando
-    shellU.uPulse.value = m.bass * 0.9 + 0.06 * (1 + Math.sin(t * 0.9))
+    shellU.uPulse.value = m.bass * 0.9 + 0.06 * (1 + Math.sin(t * 0.9)) + 0.35 * pulsoLetra
     core.scale.setScalar(1 + m.bass * 0.10 - 0.26 * mediaBico)
 
     // o líquido acompanha: incha no grave e cede quando a casca encolhe

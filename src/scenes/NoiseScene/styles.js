@@ -305,14 +305,15 @@ const css = `
 .noise-skin {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding: 10px 16px 0;
   font-size: 8px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--ash);
 }
-.noise-skin select {
+.noise-skin span { margin-right: auto; }
+.noise-skin-opt {
   appearance: none;
   background: transparent;
   border: 1px solid var(--hairline);
@@ -322,10 +323,34 @@ const css = `
   font-size: 8px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  padding: 3px 8px;
-  opacity: 0.6;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease;
 }
-.noise-skin span { margin-left: auto; opacity: 0.6; }
+.noise-skin-opt:hover { color: var(--mercury); }
+.noise-skin-opt:focus-visible { outline: 1px solid var(--mercury); outline-offset: 2px; }
+.noise-skin-opt[aria-pressed='true'] { color: var(--mercury); border-color: rgba(220, 230, 234, 0.34); }
+
+/* os discos da CD Case, no lugar da barra: as mesmas miniaturas do app */
+.noise-discs {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.noise-disc {
+  appearance: none;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: 0;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.noise-disc:hover { transform: scale(1.12); }
+.noise-disc:focus-visible { outline: 1px solid var(--mercury); outline-offset: 3px; }
+.noise-disc[aria-pressed='true'] { box-shadow: 0 0 0 1.5px var(--mercury); }
 
 .noise-controls {
   display: flex;
@@ -393,7 +418,7 @@ const css = `
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .noise-lyrics .lyr-linha, .noise-btn { transition: none; }
+  .noise-lyrics .lyr-linha, .noise-btn, .noise-disc, .noise-skin-opt { transition: none; }
 }
 `
 

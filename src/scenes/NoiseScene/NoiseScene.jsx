@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createOrb } from '../../vendor/noise-core/createOrb.js'
+import { createSampler } from '../../vendor/noise-core/sampler.js'
 import { drawSpectrum } from '../../vendor/noise-core/spectrum.js'
 import { toRGB } from '../../vendor/noise-core/palette.js'
+import { VARIANTES, ORDEM_VARIANTES } from '../../vendor/noise-core/cd-case/variants.js'
 import useReveal from '../../hooks/useReveal'
 import useDemoAudio from './useDemoAudio'
 import useLyrics from './useLyrics'
@@ -13,6 +15,9 @@ import ogg from './assets/demo-track.ogg'
 import cover from './assets/demo-cover.svg'
 
 const REPO_URL = 'https://github.com/pmsantanna/noise'
+
+// a CD Case só baixa quando alguém a escolhe: o orbe é o que a cena abre
+const carregarCd = () => import('../../vendor/noise-core/cd-case/index.js')
 // sem instalador publicado ainda: o botão aparece desabilitado com "em breve"
 const DOWNLOAD_URL = null
 
@@ -67,7 +72,7 @@ export default function NoiseScene({ t, theme = 'noir' }) {
   const progressRef = useRef(null)
   const clockRef = useRef(null)
   const fileRef = useRef(null)
-  const orbRef = useRef(null)
+  const viewRef = useRef(null)
 
   const audio = useDemoAudio({ mp3, ogg })
   const { mode, playing, error } = audio
@@ -78,6 +83,10 @@ export default function NoiseScene({ t, theme = 'noir' }) {
   const [dropping, setDropping] = useState(false)
   const [peak, setPeak] = useState(0)
   const [noGL, setNoGL] = useState(false)
+  const [skin, setSkin] = useState('orb')            // 'orb' | 'cd'
+  const [cdMod, setCdMod] = useState(null)           // o módulo da CD Case, quando chegou
+  const [cdVariante, setCdVariante] = useState('holo')
+  const [cdMexeu, setCdMexeu] = useState(false)      // a dica some no primeiro gesto
   const dragDepth = useRef(0)
 
   // a fonte e o tema mais recentes, para quem cria o orbe depois
@@ -89,6 +98,58 @@ export default function NoiseScene({ t, theme = 'noir' }) {
   modeRef.current = mode
   const pauseRef = useRef(audio.pauseForExit)
   pauseRef.current = audio.pauseForExit
+
+  /* O quadro da CD Case: o mesmo contrato que o app passa às skins. O orbe
+   * lê o analisador sozinho; o estojo recebe nível, grave, agudo e os
+   * instantes de troca de linha e de faixa, amostrados aqui uma vez por
+   * quadro. */
+  const sampler = useMemo(() => createSampler(), [])
+  useEffect(() => { sampler.setAnalyser(audio.analyser) }, [sampler, audio.analyser])
+  const quadroRef = useRef({ np: null, playing: false, level: 0, bass: 0, treble: 0, lineChangedAt: -1e9, trackChangedAt: -1e9 })
+  const tocandoRef = useRef(false)
+  tocandoRef.current = playing
+  const amostradoEm = useRef(0)
+  const quadroCd = useCallback(() => {
+    const q = quadroRef.current
+    const agora = performance.now()
+    if (agora - amostradoEm.current > 8) {
+      amostradoEm.current = agora
+      q.playing = tocandoRef.current
+      if (q.playing) {
+        const m = sampler.sample()
+        q.level = m.level
+        q.bass = m.bass
+        // agudos: o último quarto das faixas, suavizado como o grave
+        const v = sampler.bands.values
+        const de = Math.floor(v.length * 0.75)
+        let soma = 0
+        for (let i = de; i < v.length; i++) soma += v[i]
+        q.treble += (soma / (v.length - de) - q.treble) * 0.3
+      } else {
+        q.level = 0
+        q.bass = 0
+        q.treble = 0
+      }
+    }
+    return q
+  }, [sampler])
+
+  // a faixa que o estojo mostra no rótulo: a demo com a capa, ou o nome da fonte
+  const np = useMemo(() => (
+    mode === 'file' ? { title: audio.label, artist: L.file }
+      : mode === 'mic' ? { title: L.micLabel, artist: '' }
+      : { title: track.title, artist: track.artist, artworkUrl: cover }
+  ), [mode, audio.label, L.file, L.micLabel])
+  useEffect(() => {
+    quadroRef.current.np = np
+    quadroRef.current.trackChangedAt = performance.now()
+    const v = viewRef.current
+    if (v && v.kind === 'cd') v.obj.setFaixa(np)
+  }, [np])
+  // troca de linha da letra: o estojo pulsa nela, como no app
+  useEffect(() => {
+    if (playing && mode === 'demo' && lyrics.index >= 0) quadroRef.current.lineChangedAt = performance.now()
+  }, [lyrics.index]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const reduced = typeof window !== 'undefined'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -150,66 +211,107 @@ export default function NoiseScene({ t, theme = 'noir' }) {
    * por mais de 5 s: dispose, que solta o contexto WebGL — o navegador tem
    * um teto de contextos e o terreno do site já usa um. Voltando, recria.
    */
+  // escolher a CD Case baixa o módulo dela, uma vez
+  useEffect(() => {
+    if (skin !== 'cd' || cdMod) return undefined
+    let vivo = true
+    carregarCd().then((m) => { if (vivo) setCdMod(m) }).catch(() => { if (vivo) setSkin('orb') })
+    return () => { vivo = false }
+  }, [skin, cdMod])
+
+  /* Uma vista por vez no widget: o orbe ou o estojo, cada um com o seu
+   * renderer. Trocar de skin descarta a vista velha (e o contexto WebGL
+   * dela) e cria a nova no mesmo lugar — o resto da cena não muda. */
   useEffect(() => {
     if (!inView) return undefined
-    let orb = orbRef.current
-    if (!orb && noGL) return undefined
-    if (!orb) {
+    let v = viewRef.current
+    if (v && v.kind !== skin) {
+      v.obj.dispose()
+      viewRef.current = v = null
+    }
+    if (!v && noGL) return undefined
+    if (!v) {
+      if (skin === 'cd' && !cdMod) return undefined   // ainda baixando
       const { quality, adaptive } = pickQuality()
       try {
-        orb = createOrb({
-          container: orbMountRef.current,
-          theme: ORB_THEMES[themeRef.current] || ORB_THEMES.noir,
-          quality,
-          adaptive,
-          reducedMotion: reduced,
-          // reduced motion: o app já corta o deslocamento; metade disso dá
-          // ~30% do normal, sem rotação e com a esfera parada em idle
-          amplitude: reduced ? 0.5 : 1,
-          onFrame,
-        })
+        const obj = skin === 'cd'
+          ? cdMod.createCdCase({
+            container: orbMountRef.current,
+            frame: quadroCd,
+            variante: cdVariante,
+            quality: quality === 'low' ? 'low' : 'medium',
+            adaptive,
+            reducedMotion: reduced,
+            onInteracao: () => setCdMexeu(true),
+          })
+          : createOrb({
+            container: orbMountRef.current,
+            theme: ORB_THEMES[themeRef.current] || ORB_THEMES.noir,
+            quality,
+            adaptive,
+            reducedMotion: reduced,
+            // reduced motion: o app já corta o deslocamento; metade disso dá
+            // ~30% do normal, sem rotação e com a esfera parada em idle
+            amplitude: reduced ? 0.5 : 1,
+            onFrame,
+          })
+        if (skin === 'cd') obj.setFaixa(quadroRef.current.np)
+        else obj.setSource(sourceRef.current)
+        v = { kind: skin, obj }
       } catch {
         // sem WebGL: a cena continua de pé, com som, letra e a capa no
         // lugar do orbe
         setNoGL(true)
         return undefined
       }
-      orb.setSource(sourceRef.current)
-      orbRef.current = orb
+      viewRef.current = v
     }
-    if (pageVisible) orb.start()
-    return () => orb.stop()
-  }, [inView, pageVisible, onFrame, reduced, noGL])
+    if (pageVisible) v.obj.start()
+    return () => v.obj.stop()
+  }, [inView, pageVisible, onFrame, reduced, noGL, skin, cdMod, quadroCd]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (inView || !orbRef.current) return undefined
+    if (inView || !viewRef.current) return undefined
     const id = setTimeout(() => {
-      if (orbRef.current) orbRef.current.dispose()
-      orbRef.current = null
+      if (viewRef.current) viewRef.current.obj.dispose()
+      viewRef.current = null
     }, 5000)
     return () => clearTimeout(id)
   }, [inView])
 
   useEffect(() => () => {
-    if (orbRef.current) orbRef.current.dispose()
-    orbRef.current = null
+    if (viewRef.current) viewRef.current.obj.dispose()
+    viewRef.current = null
   }, [])
 
   // fonte e tema mudam no orbe vivo, sem recriar a cena
   useEffect(() => {
-    if (orbRef.current) orbRef.current.setSource(playing ? audio.analyser : null)
+    const v = viewRef.current
+    if (v && v.kind === 'orb') v.obj.setSource(playing ? audio.analyser : null)
   }, [playing, audio.analyser])
 
   useEffect(() => {
-    if (orbRef.current) orbRef.current.setTheme(ORB_THEMES[theme] || ORB_THEMES.noir)
+    const v = viewRef.current
+    if (v && v.kind === 'orb') v.obj.setTheme(ORB_THEMES[theme] || ORB_THEMES.noir)
   }, [theme])
 
   // a leitura de Hz não precisa de 60 fps — 6 bastam e o texto para de tremer
   useEffect(() => {
     if (!playing) { setPeak(0); return undefined }
-    const id = setInterval(() => setPeak(orbRef.current ? orbRef.current.metrics.peak : 0), 160)
+    const id = setInterval(() => {
+      const v = viewRef.current
+      setPeak(v && v.kind === 'orb' ? v.obj.metrics.peak : sampler.metrics.peak)
+    }, 160)
     return () => clearInterval(id)
-  }, [playing])
+  }, [playing, sampler])
+
+  /* ── disco da CD Case: a troca anima no estojo e só então vira estado ── */
+  const trocarDisco = (id) => {
+    const v = viewRef.current
+    if (!v || v.kind !== 'cd') { setCdVariante(id); return }
+    v.obj.trocar(id, (aplicada) => setCdVariante(aplicada))
+    setCdMexeu(true)
+  }
 
   /* ── arquivo: botão ou arrastar ── */
   const takeFile = (file) => {
@@ -251,7 +353,10 @@ export default function NoiseScene({ t, theme = 'noir' }) {
     : ''
 
   const showLyrics = mode === 'idle' || mode === 'demo'
-  const notice = error ? L[error] : mode === 'idle' && !playing ? L.idle : ''
+  const notice = error ? L[error]
+    : skin === 'cd' && !cdMexeu ? L.cdHint
+    : mode === 'idle' && !playing ? L.idle
+    : ''
 
   return (
     <div ref={revealRef} className={`scene-inner noise-wrap ${revealed ? 'on' : ''}`}>
@@ -347,14 +452,36 @@ export default function NoiseScene({ t, theme = 'noir' }) {
               <span className="name">{name || '—'}</span>
               <span className="hz">{peak ? `${peak} Hz` : '—'}</span>
             </div>
-            <canvas className="noise-bars" ref={barsRef} aria-hidden="true" />
+            {skin === 'orb'
+              ? <canvas className="noise-bars" ref={barsRef} aria-hidden="true" />
+              : (
+                <div className="noise-discs" role="group" aria-label={L.disc}>
+                  {ORDEM_VARIANTES.map((id) => (
+                    <button
+                      key={id}
+                      className="noise-disc"
+                      style={{ background: VARIANTES[id].miniatura }}
+                      title={VARIANTES[id].nome}
+                      aria-label={`${L.disc}: ${VARIANTES[id].nome}`}
+                      aria-pressed={cdVariante === id}
+                      onClick={() => trocarDisco(id)}
+                    />
+                  ))}
+                </div>
+              )}
 
-            <div className="noise-skin">
-              <label htmlFor="noise-skin-select">{L.skin}</label>
-              <select id="noise-skin-select" disabled aria-describedby="noise-skin-soon">
-                <option>Wireframe</option>
-              </select>
-              <span id="noise-skin-soon">{L.soon}</span>
+            <div className="noise-skin" role="group" aria-label={L.skin}>
+              <span>{L.skin}</span>
+              <button className="noise-skin-opt" aria-pressed={skin === 'orb'} onClick={() => setSkin('orb')}>{L.skinOrb}</button>
+              <button
+                className="noise-skin-opt"
+                aria-pressed={skin === 'cd'}
+                onClick={() => setSkin('cd')}
+                // antecipa o download quando o ponteiro chega no botão
+                onPointerEnter={() => { carregarCd() }}
+              >
+                {L.skinCd}
+              </button>
             </div>
 
             <div className="noise-controls">
