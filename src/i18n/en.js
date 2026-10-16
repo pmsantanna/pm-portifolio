@@ -14,8 +14,6 @@ const en = {
     slug:        'SCENE 002 · EXT. BRIDGE BETWEEN TWO DATABASES — FOG',
     take:        'TAKE 001 — FEATURED',
     projectDesc: 'A type-safe, resumable data migration framework for Java enterprise systems. Checkpoints, retry, and pagination — built to cross the fog between one database and another without dropping anything.',
-    dashboardDesc: 'Real-time audit dashboard for DataBridge — every run becomes a rung on a wireframe DNA helix. Volume per routine, run history, and errors, live via SSE while the CLI runs.',
-    dashboardTake: 'TAKE 002 — DASHBOARD',
   },
 
   noise: {

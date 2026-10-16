@@ -367,28 +367,6 @@ const css = `
   gap: 18px;
 }
 
-/* take secundário: mesmo vocabulário, hierarquia menor */
-.db-card.sub { padding: 32px 36px; }
-.db-card.sub h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
-.db-card.sub p { font-size: 13.5px; margin-top: 14px; }
-.db-card.sub .tags { margin-top: 22px; }
-.db-card.sub .tags span { padding: 5px 11px; }
-
-.card-link {
-  display: inline-block;
-  margin-top: 20px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--ink);
-  text-decoration: none;
-  border-bottom: 1px solid var(--faint);
-  padding-bottom: 2px;
-  transition: border-color 0.6s ease;
-}
-.card-link:hover, .card-link:focus-visible { border-color: var(--ink); outline: none; }
-
 @media (max-width: 980px) {
   .db-dock { grid-template-columns: 1fr; gap: 30px; }
   .db-rail { order: -1; position: static; }
